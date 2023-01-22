@@ -1,0 +1,6 @@
+name: "Staled Notion task actions"
+description: "Moving staled Notion tasks"
+
+runs:
+  using: docker
+  image: Dockerfile
