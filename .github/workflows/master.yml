@@ -1,0 +1,23 @@
+name: Testing with the private action
+
+on: 
+  push:
+    branches:
+      - master
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run Notion task handle actions
+        uses: ./
+        env:
+          API_KEY: ${{ secrets.API_KEY }}
+          DATABASE_ID: ${{ secrets.DATABASE_ID }}
+          MOVING_PROPERTY: ${{ secrets.MOVING_PROPERTY }}
+          MOVING_COLUMN_BEFORE: ${{ secrets.MOVING_COLUMN_BEFORE }}
+          MOVING_COLUMN_AFTER: ${{ secrets.MOVING_COLUMN_AFTER }}
+          DAYS_BEFORE_TASK_MOVING: ${{ secrets.DAYS_BEFORE_TASK_MOVING }}
