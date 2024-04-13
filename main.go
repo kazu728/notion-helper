@@ -4,11 +4,24 @@ import (
 	"context"
 	"log"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/caarlos0/env/v6"
 	"github.com/dstotijn/go-notion"
 )
+
+type Result struct {
+	ID  string
+	Err error
+}
+
+type Task struct {
+	Id             string    `json:"id"`
+	LastEditedTime time.Time `json:"last_edited_time"`
+}
+
+type Tasks []Task
 
 type NotionConfig struct {
 	APIKey               string `env:"API_KEY"`
@@ -19,10 +32,12 @@ type NotionConfig struct {
 	DaysBeforeTaskMoving int    `env:"DAYS_BEFORE_TASK_MOVING"`
 }
 
-type Result struct {
-	ID  string
-	Err error
+type Notion struct {
+	client *notion.Client
+	config NotionConfig
 }
+
+var wg sync.WaitGroup
 
 func main() {
 	if err := Run(); err != nil {
@@ -50,6 +65,7 @@ func Run() error {
 	results := make(chan Result, len(canMovingTasks))
 
 	for _, task := range canMovingTasks {
+		wg.Add(1)
 		go func(id string) {
 			if err := n.updatePage(context.Background(), id); err != nil {
 				panic(err)
@@ -58,23 +74,21 @@ func Run() error {
 		}(task.Id)
 	}
 
-	for range canMovingTasks {
-		<-results
+	wg.Wait()
+	close(results)
+
+	for result := range results {
+		if result.Err != nil {
+			log.Printf("Error processing task %s: %v", result.ID, result.Err)
+		}
 	}
 
 	return nil
 }
 
-type Task struct {
-	Id             string    `json:"id"`
-	LastEditedTime time.Time `json:"last_edited_time"`
-}
-
 func (t *Task) canMoving(days int) bool {
 	return time.Now().After(t.LastEditedTime.AddDate(0, 0, days))
 }
-
-type Tasks []Task
 
 func (t Tasks) canMovingTasks(days int) Tasks {
 	resp := make(Tasks, 0, len(t))
@@ -84,11 +98,6 @@ func (t Tasks) canMovingTasks(days int) Tasks {
 		}
 	}
 	return resp
-}
-
-type Notion struct {
-	client *notion.Client
-	config NotionConfig
 }
 
 func NewNotion(c NotionConfig) Notion {
