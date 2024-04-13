@@ -1,0 +1,7 @@
+action:
+  move:
+    property:
+      name: Status
+      from: Done recently
+      to: Done
+      expires_in_days: 7

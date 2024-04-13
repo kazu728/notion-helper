@@ -9,6 +9,7 @@ import (
 
 	"github.com/caarlos0/env/v6"
 	"github.com/dstotijn/go-notion"
+	"gopkg.in/yaml.v3"
 )
 
 type Result struct {
@@ -24,49 +25,63 @@ type Task struct {
 type Tasks []Task
 
 type NotionConfig struct {
-	APIKey               string `env:"API_KEY"`
-	DatabaseID           string `env:"DATABASE_ID"`
-	MovingProperty       string `env:"MOVING_PROPERTY"`
-	MovingColumnBefore   string `env:"MOVING_COLUMN_BEFORE"`
-	MovingColumnAfter    string `env:"MOVING_COLUMN_AFTER"`
-	DaysBeforeTaskMoving int    `env:"DAYS_BEFORE_TASK_MOVING"`
+	APIKey     string `env:"API_KEY"`
+	DatabaseID string `env:"DATABASE_ID"`
+}
+
+type Setting struct {
+	Action Action `yaml:"action"`
+}
+
+type Action struct {
+	Move MoveAction `yaml:"move"`
+}
+
+type MoveAction struct {
+	Property PropertyAction `yaml:"property"`
+}
+
+type PropertyAction struct {
+	Name          string `yaml:"name"`
+	From          string `yaml:"from"`
+	To            string `yaml:"to"`
+	ExpiresInDays int    `yaml:"expires_in_days"`
 }
 
 type Notion struct {
 	client *notion.Client
 	config NotionConfig
+	action Action
 }
 
 var wg sync.WaitGroup
 
 func main() {
-	if err := Run(); err != nil {
+	if err := run(); err != nil {
 		panic(err)
 	}
 
 	os.Exit(0)
 }
 
-func Run() error {
-	config := NotionConfig{}
-
-	if err := env.Parse(&config, env.Options{RequiredIfNoDef: true}); err != nil {
-		return err
-	}
-
-	n := NewNotion(config)
-	tasks, err := n.getTasks()
-
+func run() error {
+	n, err := newNotion()
 	if err != nil {
 		return err
 	}
 
-	canMovingTasks := tasks.canMovingTasks(n.config.DaysBeforeTaskMoving)
+	tasks, err := n.getTasks()
+	if err != nil {
+		return err
+	}
+
+	canMovingTasks := tasks.canMovingTasks(n.action.Move.Property.ExpiresInDays)
 	results := make(chan Result, len(canMovingTasks))
 
 	for _, task := range canMovingTasks {
 		wg.Add(1)
 		go func(id string) {
+			defer wg.Done()
 			if err := n.updatePage(context.Background(), id); err != nil {
 				panic(err)
 			}
@@ -100,17 +115,33 @@ func (t Tasks) canMovingTasks(days int) Tasks {
 	return resp
 }
 
-func NewNotion(c NotionConfig) Notion {
-	return Notion{client: notion.NewClient(c.APIKey), config: c}
+func newNotion() (Notion, error) {
+	config := NotionConfig{}
+
+	if err := env.Parse(&config, env.Options{RequiredIfNoDef: true}); err != nil {
+		return Notion{}, err
+	}
+
+	data, err := os.ReadFile("./setting.yml")
+	if err != nil {
+		return Notion{}, err
+	}
+
+	var setting Setting
+	if err = yaml.Unmarshal(data, &setting); err != nil {
+		return Notion{}, err
+	}
+
+	return Notion{client: notion.NewClient(config.APIKey), config: config, action: setting.Action}, nil
 }
 
 func (n *Notion) getTasks() (Tasks, error) {
 	queryResponse, err := n.client.QueryDatabase(context.Background(), n.config.DatabaseID, &notion.DatabaseQuery{
 		Filter: &notion.DatabaseQueryFilter{
-			Property: n.config.MovingProperty,
+			Property: n.action.Move.Property.Name,
 			DatabaseQueryPropertyFilter: notion.DatabaseQueryPropertyFilter{
 				Select: &notion.SelectDatabaseQueryFilter{
-					Equals: n.config.MovingColumnBefore,
+					Equals: n.action.Move.Property.From,
 				},
 			},
 		},
@@ -135,9 +166,9 @@ func (n *Notion) updatePage(ctx context.Context, pageID string) error {
 	updatedProps := make(notion.DatabasePageProperties)
 
 	log.Printf("Updating. ID:  %s \n", pageID)
-	updatedProps[n.config.MovingProperty] = notion.DatabasePageProperty{
+	updatedProps[n.action.Move.Property.Name] = notion.DatabasePageProperty{
 		Select: &notion.SelectOptions{
-			Name: n.config.MovingColumnAfter,
+			Name: n.action.Move.Property.To,
 		},
 	}
 

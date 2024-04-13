@@ -1,5 +1,5 @@
-name: "Staled Notion task actions"
-description: "Moving staled Notion tasks"
+name: "nau"
+description: "Notion task automation"
 
 runs:
   using: docker
