@@ -3,4 +3,4 @@ description: "Notion task automation"
 
 runs:
   using: docker
-  image: Dockerfile
+  image: "../../../Dockerfile"
