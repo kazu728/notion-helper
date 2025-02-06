@@ -1,0 +1,33 @@
+name: "Notify on Cron Schedule"
+
+on:
+  schedule:
+    - cron: "0 15 1 * *"  # JST 00:00 every 1st day of the month
+    
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: notify-on-cron-schedule
+  cancel-in-progress: true
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Deno
+        uses: denolib/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Run script
+        run: deno run --allow-all main.ts
+        env:
+            NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+            NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+            SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+            
