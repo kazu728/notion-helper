@@ -9,7 +9,6 @@ import (
 
 	"github.com/caarlos0/env/v6"
 	"github.com/dstotijn/go-notion"
-	"gopkg.in/yaml.v3"
 )
 
 type Result struct {
@@ -30,22 +29,35 @@ type NotionConfig struct {
 }
 
 type Setting struct {
-	Action Action `yaml:"action"`
+	Action Action
 }
 
 type Action struct {
-	Move MoveAction `yaml:"move"`
+	Move MoveAction
 }
 
 type MoveAction struct {
-	Property PropertyAction `yaml:"property"`
+	Property PropertyAction
 }
 
 type PropertyAction struct {
-	Name          string `yaml:"name"`
-	From          string `yaml:"from"`
-	To            string `yaml:"to"`
-	ExpiresInDays int    `yaml:"expires_in_days"`
+	Name          string
+	From          string
+	To            string
+	ExpiresInDays int
+}
+
+var setting Setting = Setting{
+	Action: Action{
+		Move: MoveAction{
+			Property: PropertyAction{
+				Name:          "Status",
+				From:          "Done recently",
+				To:            "Done",
+				ExpiresInDays: 31,
+			},
+		},
+	},
 }
 
 type Notion struct {
@@ -119,16 +131,6 @@ func newNotion() (Notion, error) {
 	config := NotionConfig{}
 
 	if err := env.Parse(&config, env.Options{RequiredIfNoDef: true}); err != nil {
-		return Notion{}, err
-	}
-
-	data, err := os.ReadFile("./setting.yml")
-	if err != nil {
-		return Notion{}, err
-	}
-
-	var setting Setting
-	if err = yaml.Unmarshal(data, &setting); err != nil {
 		return Notion{}, err
 	}
 
