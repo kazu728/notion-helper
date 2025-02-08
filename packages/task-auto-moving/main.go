@@ -25,8 +25,8 @@ type Task struct {
 type Tasks []Task
 
 type NotionConfig struct {
-	APIKey     string `env:"API_KEY"`
-	DatabaseID string `env:"DATABASE_ID"`
+	APIKey     string `env:"NOTION_TOKEN"`
+	DatabaseID string `env:"NOTION_DATABASE_ID"`
 }
 
 type Setting struct {

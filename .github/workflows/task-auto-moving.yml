@@ -25,5 +25,5 @@ jobs:
       - name: Run Notion task handle actions
         uses: ./.github/actions/nau/
         env:
-          API_KEY: ${{ secrets.API_KEY }}
-          DATABASE_ID: ${{ secrets.DATABASE_ID }}
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}

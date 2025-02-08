@@ -3,4 +3,4 @@ description: "Notion task automation"
 
 runs:
   using: docker
-  image: "../../../package/task-auto-moving/Dockerfile"
+  image: "../../../packages/task-auto-moving/Dockerfile"
